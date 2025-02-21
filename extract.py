@@ -1,40 +1,36 @@
-import librosa
-import numpy as np
-import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-def extract_features(audio_path):
-    # Đọc file âm thanh
-    y, sr = librosa.load(audio_path, sr=22050)
-    
-    # Trích xuất đặc trưng
-    # 1. Đặc trưng phổ (Spectral Features)
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-    mfcc_mean = np.mean(mfcc, axis=1)  # Shape: (13,)
-    
-    # 2. Đặc trưng nhịp điệu (Rhythmic Features)
-    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    
-    # 3. Đặc trưng năng lượng (Energy Features)
-    spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
-    
-    # 4. Đặc trưng hòa âm (Harmonic Features)
-    chroma = np.mean(librosa.feature.chroma_stft(y=y, sr=sr), axis=1)  # Shape: (12,)
-    
-    # Ghép các đặc trưng - đảm bảo mỗi giá trị là mảng 1D
-    features = np.concatenate([
-        mfcc_mean,
-        np.array([tempo]),  # Chuyển số vô hướng thành mảng 1D
-        np.array([spectral_centroid]),  # Chuyển số vô hướng thành mảng 1D
-        chroma
-    ])
-    
-    # Debug: In ra kích thước của mỗi phần
-    print(f"mfcc_mean shape: {mfcc_mean.shape}")
-    print(f"tempo array shape: {np.array([tempo]).shape}")
-    print(f"spectral_centroid array shape: {np.array([spectral_centroid]).shape}")
-    print(f"chroma shape: {chroma.shape}")
-    
-    return features
+# 1. Đọc dữ liệu từ file CSV
+data = pd.read_csv("music_features.csv")
 
+# In ra danh sách các cột và vài dòng đầu của dữ liệu
+print("Các cột trong dữ liệu:", data.columns.tolist())
+print("Dữ liệu mẫu:")
+print(data.head())
 
-extract_features("data.mp3")
+# 2. Kiểm tra xem cột 'genre' có tồn tại hay không
+if 'genre' in data.columns:
+    # Ví dụ: vẽ boxplot của đặc trưng mfcc_0 theo từng genre
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(x='genre', y='mfcc_0', data=data)
+    plt.title("Phân bố của mfcc_0 theo thể loại (genre)")
+    plt.xlabel("Thể loại")
+    plt.ylabel("Giá trị mfcc_0")
+    plt.show()
+else:
+    print("Không tìm thấy cột 'genre' trong dữ liệu.")
+    # Loại bỏ cột file_name nếu tồn tại
+    features = data.drop(columns=['file_name'], errors='ignore')
+    # Chỉ lấy các cột số (numeric) để tính ma trận tương quan
+    features_numeric = features.select_dtypes(include=['number'])
+    
+    print("Các cột số được sử dụng cho ma trận tương quan:", features_numeric.columns.tolist())
+    
+    correlation_matrix = features_numeric.corr()
+    
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+    plt.title("Ma trận tương quan của các đặc trưng số")
+    plt.show()
