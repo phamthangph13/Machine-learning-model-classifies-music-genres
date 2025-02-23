@@ -1,36 +1,45 @@
+import os
+import librosa
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import numpy as np
 
-# 1. Đọc dữ liệu từ file CSV
-data = pd.read_csv("music_features.csv")
+# Đường dẫn đến các folder chứa file mp3
+genres = ['Acoustic', 'Country', 'EDM', 'Rap', 'Rock']
+data = []
 
-# In ra danh sách các cột và vài dòng đầu của dữ liệu
-print("Các cột trong dữ liệu:", data.columns.tolist())
-print("Dữ liệu mẫu:")
-print(data.head())
+# Hàm trích xuất đặc trưng từ một file mp3
+def extract_features(file_path, label):
+    y, sr = librosa.load(file_path)
+    
+    # MFCCs
+    mfccs = np.mean(librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20), axis=1)
+    # Chroma features
+    chroma = np.mean(librosa.feature.chroma_stft(y=y, sr=sr), axis=1)
+    # Spectral contrast
+    contrast = np.mean(librosa.feature.spectral_contrast(y=y, sr=sr), axis=1)
+    # Zero-crossing rate
+    zcr = np.mean(librosa.feature.zero_crossing_rate(y))
+    # Tempo
+    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+    
+    features = np.concatenate([mfccs, chroma, contrast, [zcr], [tempo]])
+    return np.append(features, label)
 
-# 2. Kiểm tra xem cột 'genre' có tồn tại hay không
-if 'genre' in data.columns:
-    # Ví dụ: vẽ boxplot của đặc trưng mfcc_0 theo từng genre
-    plt.figure(figsize=(10, 6))
-    sns.boxplot(x='genre', y='mfcc_0', data=data)
-    plt.title("Phân bố của mfcc_0 theo thể loại (genre)")
-    plt.xlabel("Thể loại")
-    plt.ylabel("Giá trị mfcc_0")
-    plt.show()
-else:
-    print("Không tìm thấy cột 'genre' trong dữ liệu.")
-    # Loại bỏ cột file_name nếu tồn tại
-    features = data.drop(columns=['file_name'], errors='ignore')
-    # Chỉ lấy các cột số (numeric) để tính ma trận tương quan
-    features_numeric = features.select_dtypes(include=['number'])
-    
-    print("Các cột số được sử dụng cho ma trận tương quan:", features_numeric.columns.tolist())
-    
-    correlation_matrix = features_numeric.corr()
-    
-    plt.figure(figsize=(12, 10))
-    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
-    plt.title("Ma trận tương quan của các đặc trưng số")
-    plt.show()
+# Duyệt qua các folder và file mp3
+for genre in genres:
+    folder_path = f'path_to_dataset/{genre}'
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith('.mp3'):
+            file_path = os.path.join(folder_path, file_name)
+            features = extract_features(file_path, genre)
+            data.append(features)
+
+# Tạo DataFrame và lưu vào CSV
+columns = [f'MFCC_{i+1}' for i in range(20)] + \
+          [f'Chroma_{i+1}' for i in range(12)] + \
+          [f'Spectral_Contrast_{i+1}' for i in range(7)] + \
+          ['Zero_Crossing_Rate', 'Tempo', 'Label']
+df = pd.DataFrame(data, columns=columns)
+df.to_csv('data.csv', index=False)
+
+

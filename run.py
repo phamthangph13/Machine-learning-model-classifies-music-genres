@@ -1,31 +1,29 @@
+import librosa
+import numpy as np
+import joblib
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-# 1. Đọc dữ liệu từ file CSV
-data = pd.read_csv('music_features.csv')
+# Hàm trích xuất đặc trưng (tương tự File 1)
+def extract_features(file_path):
+    y, sr = librosa.load(file_path)
+    mfccs = np.mean(librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20), axis=1)
+    chroma = np.mean(librosa.feature.chroma_stft(y=y, sr=sr), axis=1)
+    contrast = np.mean(librosa.feature.spectral_contrast(y=y, sr=sr), axis=1)
+    zcr = np.mean(librosa.feature.zero_crossing_rate(y))
+    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+    return np.concatenate([mfccs, chroma, contrast, [zcr], [tempo]])
 
-# 2. Khám phá dữ liệu
-print("Thông tin dữ liệu:")
-print(data.info())
-print("\nThống kê mô tả:")
-print(data.describe())
+# Tải mô hình và LabelEncoder
+model = joblib.load('model.pkl')
+le = joblib.load('label_encoder.pkl')
 
-# 3. Vẽ histogram cho các cột số
-data.hist(bins=30, figsize=(15,10))
-plt.tight_layout()
-plt.show()
+# Đọc file mp3 mới
+file_path = 'path_to_new_song.mp3'
+features = extract_features(file_path)
 
-# 4. Vẽ Boxplot để phát hiện outliers
-plt.figure(figsize=(12,6))
-sns.boxplot(data=data)
-plt.xticks(rotation=90)
-plt.title("Boxplot của các biến")
-plt.show()
+# Dự đoán nhãn
+features = features.reshape(1, -1)
+pred = model.predict(features)
+label = le.inverse_transform(pred)[0]
 
-# 5. Vẽ Heatmap của ma trận tương quan
-plt.figure(figsize=(10,8))
-correlation_matrix = data.corr()
-sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
-plt.title("Ma trận tương quan")
-plt.show()
+print(f"Thể loại nhạc dự đoán: {label}")

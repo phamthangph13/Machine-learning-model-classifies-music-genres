@@ -1,36 +1,31 @@
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-import os
-import pandas as pd
-from extract import extract_features
-# Tạo dataset
-features = []
-labels = []
-genres = ['Pop', 'Rock', 'Rap', 'EDM', 'Country']
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, classification_report
+import joblib
 
-for genre in genres:
-    for filename in os.listdir(f'dataset/{genre}'):
-        if filename.endswith('.wav'):
-            audio_path = f'dataset/{genre}/{filename}'
-            feature_vector = extract_features(audio_path)
-            features.append(feature_vector)
-            labels.append(genre)
+# Đọc dữ liệu từ CSV
+df = pd.read_csv('data.csv')
+X = df.drop('Label', axis=1)
+y = df['Label']
 
-# Chuyển thành DataFrame
-df = pd.DataFrame(features)
-df['genre'] = labels
+# Mã hóa nhãn
+le = LabelEncoder()
+y_encoded = le.fit_transform(y)
 
-# Chia tập huấn luyện và kiểm thử
-X = df.drop('genre', axis=1)
-y = df['genre']
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Chia dữ liệu
+X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
-# Huấn luyện mô hình
-model = RandomForestClassifier(n_estimators=100)
+# Huấn luyện mô hình Random Forest
+model = RandomForestClassifier(n_estimators=100, random_state=42)
 model.fit(X_train, y_train)
 
 # Đánh giá mô hình
-accuracy = model.score(X_test, y_test)
-print(f"Độ chính xác: {accuracy:.2f}")
+y_pred = model.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred, target_names=le.classes_))
 
-
+# Lưu mô hình và LabelEncoder
+joblib.dump(model, 'model.pkl')
+joblib.dump(le, 'label_encoder.pkl')
