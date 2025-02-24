@@ -1,0 +1,13 @@
+Độ chính xác: 0.72
+Báo cáo phân loại:
+              precision    recall  f1-score   support
+
+    Acoustic       0.64      0.70      0.67        10
+     Country       0.53      0.80      0.64        10
+         EDM       0.89      0.80      0.84        10
+         Rap       0.86      0.60      0.71        10
+        Rock       0.88      0.70      0.78        10
+
+    accuracy                           0.72        50
+   macro avg       0.76      0.72      0.73        50
+weighted avg       0.76      0.72      0.73        50
